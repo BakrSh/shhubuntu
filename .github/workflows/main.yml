@@ -1,0 +1,25 @@
+name: Ubuntu SSH
+
+on: [workflow_dispatch]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup SSH
+        run: |
+          sudo apt update
+          sudo apt install openssh-server curl -y
+          sudo service ssh start
+          
+          # إعداد باسورد لليوزر الافتراضي
+          echo "runner:123456" | sudo chpasswd
+          
+          # تنزيل cloudflared لعمل نفق
+          curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o cloudflared
+          chmod +x cloudflared
+          
+          # فتح منفذ SSH (22) للعالم
+          nohup ./cloudflared tunnel --url tcp://localhost:22 --no-autoupdate &
+          sleep 10
+          echo "افتح اللوجز عشان تشوف رابط الاتصال"
