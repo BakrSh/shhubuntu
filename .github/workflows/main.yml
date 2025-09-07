@@ -1,25 +1,36 @@
-name: Ubuntu SSH
+name: SSH via Cloudflare
 
-on: [workflow_dispatch]
+on:
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Setup SSH
+      - name: Setup SSH and Cloudflared
         run: |
-          sudo apt update
-          sudo apt install openssh-server curl -y
+          # تحديث النظام وتثبيت SSH و curl
+          sudo apt update && sudo apt install -y openssh-server curl
+          
+          # تشغيل خدمة SSH
           sudo service ssh start
           
-          # إعداد باسورد لليوزر الافتراضي
+          # إعداد كلمة مرور لليوزر runner
           echo "runner:123456" | sudo chpasswd
           
-          # تنزيل cloudflared لعمل نفق
+          # تنزيل cloudflared
           curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o cloudflared
           chmod +x cloudflared
           
-          # فتح منفذ SSH (22) للعالم
-          nohup ./cloudflared tunnel --url tcp://localhost:22 --no-autoupdate &
-          sleep 10
-          echo "افتح اللوجز عشان تشوف رابط الاتصال"
+          # تشغيل Cloudflared لنفق SSH وإعادة توجيه المخرجات
+          nohup ./cloudflared tunnel --url tcp://localhost:22 --no-autoupdate > cloudflared.log 2>&1 &
+          sleep 5
+          
+          # استخراج رابط الاتصال من اللوج
+          SSH_URL=$(grep -oP 'https://.*trycloudflare.com' cloudflared.log | head -1)
+          echo "رابط SSH مباشر:"
+          echo "$SSH_URL"
+          
+          # إبقاء الجوب شغال
+          sleep infinity
