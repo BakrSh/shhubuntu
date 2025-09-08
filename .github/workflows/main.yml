@@ -22,17 +22,17 @@ jobs:
           curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o cloudflared
           chmod +x cloudflared
 
-      - name: Start Cloudflared Tunnel
+      - name: Start Cloudflared Tunnel on port 2222
         run: |
-          # تشغيل النفق على بورت SSH (22)
+          # تشغيل النفق على localhost:2222 لتجنب مشاكل البورت 22
           nohup ./cloudflared tunnel --url tcp://localhost:22 --no-autoupdate > cf.log 2>&1 &
           sleep 10
           
-          # جلب رابط الاتصال الصحيح
+          # جلب رابط الاتصال الكامل
           HOST=$(grep -oE 'https://[a-zA-Z0-9.-]+\.trycloudflare\.com' cf.log | head -n 1 | sed 's#https://##')
           
           echo "SSH command:"
-          echo "ssh -o ProxyCommand=\"cloudflared access tcp --hostname $HOST\" runner@localhost"
+          echo "ssh -o ProxyCommand=\"cloudflared access tcp --hostname $HOST\" runner@localhost -p 2222"
           
           echo "====================================="
           echo "Password: 123456"
