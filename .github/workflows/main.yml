@@ -28,12 +28,23 @@ jobs:
           nohup ./cloudflared tunnel --url tcp://localhost:22 --no-autoupdate > cf.log 2>&1 &
           sleep 10
           
-          # جلب رابط الاتصال من اللوج
-          cat cf.log | grep -o 'trycloudflare.com.*' | head -n 1 | awk '{print "SSH command:\nssh -o ProxyCommand=\"cloudflared access tcp --hostname "$1"\" runner@localhost"}'
+          # جلب رابط الاتصال الصحيح
+          HOST=$(grep -oE 'https://[a-zA-Z0-9.-]+\.trycloudflare\.com' cf.log | head -n 1 | sed 's#https://##')
+          
+          echo "SSH command:"
+          echo "ssh -o ProxyCommand=\"cloudflared access tcp --hostname $HOST\" runner@localhost"
           
           echo "====================================="
           echo "Password: 123456"
           echo "Username: runner"
+          echo "====================================="
+
+      - name: Show Public IP
+        run: |
+          echo "====================================="
+          echo "Public IP:"
+          curl -s ifconfig.me
+          echo
           echo "====================================="
 
       - name: Keep workflow alive
