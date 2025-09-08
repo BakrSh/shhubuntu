@@ -1,4 +1,4 @@
-name: Ubuntu SSH via Cloudflare
+name: Ubuntu SSH Direct
 
 on:
   workflow_dispatch:
@@ -10,7 +10,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt update
-          sudo apt install -y openssh-server curl
+          sudo apt install -y openssh-server curl socat
 
           # إعداد باسورد لليوزر الافتراضي
           echo "runner:123456" | sudo chpasswd
@@ -18,34 +18,24 @@ jobs:
           # تشغيل SSH
           sudo service ssh start
 
-          # تنزيل cloudflared
-          curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o cloudflared
-          chmod +x cloudflared
-
-      - name: Start Cloudflared Tunnel on port 2222
+      - name: Expose SSH port locally
         run: |
-          # تشغيل النفق على localhost:2222 لتجنب مشاكل البورت 22
-          nohup ./cloudflared tunnel --url tcp://localhost:22 --no-autoupdate > cf.log 2>&1 &
-          sleep 10
-          
-          # جلب رابط الاتصال الكامل
-          HOST=$(grep -oE 'https://[a-zA-Z0-9.-]+\.trycloudflare\.com' cf.log | head -n 1 | sed 's#https://##')
-          
-          echo "SSH command:"
-          echo "ssh -o ProxyCommand=\"cloudflared access tcp --hostname $HOST\" runner@localhost -p 2222"
+          # فتح بورت SSH على 2222 (محليًا)
+          nohup socat TCP-LISTEN:2222,fork TCP:localhost:22 > socat.log 2>&1 &
+          sleep 5
           
           echo "====================================="
-          echo "Password: 123456"
+          echo "SSH direct command:"
+          echo "ssh runner@<RUNNER_PUBLIC_IP> -p 2222"
           echo "Username: runner"
+          echo "Password: 123456"
           echo "====================================="
 
       - name: Show Public IP
         run: |
-          echo "====================================="
           echo "Public IP:"
           curl -s ifconfig.me
           echo
-          echo "====================================="
 
       - name: Keep workflow alive
         run: sleep infinity
