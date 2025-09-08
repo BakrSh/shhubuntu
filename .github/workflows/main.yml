@@ -1,4 +1,4 @@
-name: SSH via Cloudflare
+name: Ubuntu SSH via Cloudflare
 
 on:
   workflow_dispatch:
@@ -6,31 +6,35 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Setup SSH and Cloudflared
+      - name: Install dependencies
         run: |
-          # تحديث النظام وتثبيت SSH و curl
-          sudo apt update && sudo apt install -y openssh-server curl
-          
-          # تشغيل خدمة SSH
-          sudo service ssh start
-          
-          # إعداد كلمة مرور لليوزر runner
+          sudo apt update
+          sudo apt install -y openssh-server curl
+
+          # إعداد باسورد لليوزر الافتراضي
           echo "runner:123456" | sudo chpasswd
-          
+
+          # تشغيل SSH
+          sudo service ssh start
+
           # تنزيل cloudflared
           curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o cloudflared
           chmod +x cloudflared
+
+      - name: Start Cloudflared Tunnel
+        run: |
+          # تشغيل النفق على بورت SSH (22)
+          nohup ./cloudflared tunnel --url tcp://localhost:22 --no-autoupdate > cf.log 2>&1 &
+          sleep 10
           
-          # تشغيل Cloudflared لنفق SSH وإعادة توجيه المخرجات
-          nohup ./cloudflared tunnel --url tcp://localhost:22 --no-autoupdate > cloudflared.log 2>&1 &
-          sleep 5
+          # جلب رابط الاتصال من اللوج
+          cat cf.log | grep -o 'trycloudflare.com.*' | head -n 1 | awk '{print "SSH command:\nssh -o ProxyCommand=\"cloudflared access tcp --hostname "$1"\" runner@localhost"}'
           
-          # استخراج رابط الاتصال من اللوج
-          SSH_URL=$(grep -oP 'https://.*trycloudflare.com' cloudflared.log | head -1)
-          echo "رابط SSH مباشر:"
-          echo "$SSH_URL"
-          
-          # إبقاء الجوب شغال
-          sleep infinity
+          echo "====================================="
+          echo "Password: 123456"
+          echo "Username: runner"
+          echo "====================================="
+
+      - name: Keep workflow alive
+        run: sleep infinity
